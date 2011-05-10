@@ -1,0 +1,241 @@
+<h1>Coding a mashup: Portsmouth flood gate status</h1>
+
+<p>As an example of using the HLAPI this section describes how a "flood gate 
+status" mashup application was built.</p>
+
+<p>The purpose of this mashup is to take tide and wave height data from the HLAPI 
+for an area as well as predicted tide height data from another source. These are 
+then plotted on a graph. Then, given data on the locations of flood gates and 
+their tide level thresholds, give information on which gates should be closed, 
+which should be next to close (and in how long that should happen) and so on.</p>
+
+<h2>Scripting language and libraries</h2>
+
+<p>This example uses the <a href="http://php.net/">PHP</a> scripting language. For Sparql queries and RDF 
+manipulation it uses the <a href="http://arc.semsol.org/">Arc2</a> library and, for ease of coding and 
+readability, <a href="http://graphite.ecs.soton.ac.uk/">Graphite</a>. The <a href="http://code.google.com/p/flot/">Flot</a> Javascript library (a 
+<a href="http://jquery.com/">Jquery</a> plugin) is used for charts and the <a href="http://code.google.com/apis/maps/documentation/staticmaps/">Google Static Maps 
+API</a> for mapping.</p>
+
+<p>Another useful tool is an RDF browser such as the <a href="http://graphite.ecs.soton.ac.uk/browser/">Q&amp;D RDF Browser</a>.</p>
+
+<p>First we load in the Arc2 and Graphite libraries and set up Graphite with a list 
+of namespaces for coding simplicity.</p>
+
+<pre><code>require_once "arc/ARC2.php";
+require_once "Graphite.php";
+$graph = new Graphite();
+$graph-&gt;ns("id-semsorgrid", "http://id.semsorgrid.ecs.soton.ac.uk/");
+$graph-&gt;ns("ssn", "http://purl.oclc.org/NET/ssnx/ssn#");
+$graph-&gt;ns("DUL", "http://www.loa-cnr.it/ontologies/DUL.owl#");
+$graph-&gt;ns("time", "http://www.w3.org/2006/time#");
+</code></pre>
+
+<p>This continues for other useful namespace prefixes. The <code>id-semsorgrid</code> prefix 
+is added for further code brevity.</p>
+
+<h2>Getting the day's tide and wave height readings</h2>
+
+<p>In the case of the CCO deployment, the current day's tide height readings for 
+the Portsmouth sensor are identified by</p>
+
+<pre><code>http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/portsmouth/TideHeight/latest
+</code></pre>
+
+<p style="font-weight: bold; background-color: yellow;">This is a lie -- that sensor doesn't exist. In the demo I'm using `arunplatform_tide`, not `portsmouth`.</p>
+
+<p>We can direct Graphite to load the resources into a graph -- Graphite and the 
+HLAPI will automatically negotiate a content type which can be used. We're using 
+the namespace we defined above for brevity.</p>
+
+<pre><code>$graph-&gt;load("id-semsorgrid:observations/cco/portsmouth/TideHeight/latest");
+</code></pre>
+
+<p style="font-weight: bold; background-color: yellow;">The same lie again.</p>
+
+<p>Graphite allows the graph to be rendered directly as HTML to quickly visualize 
+what is available, the same can be achieved by using a dedicated RDF browser.</p>
+
+<pre><code>echo $graph-&gt;dump();
+</code></pre>
+
+<p>The beginning of the output is something like the following:</p>
+
+<pre><code>id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101
+    -&gt; rdf:type -&gt; DUL:Collection
+    -&gt; DUL:hasMember -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#084300,
+    -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#134300,
+    -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#192301
+
+id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#084300
+    -&gt; rdf:type -&gt; ssn:Observation
+    -&gt; ssn:featureOfInterest -&gt; http://www.eionet.europa.eu/gemet/concept?cp=7495
+    -&gt; ssn:observationResultTime -&gt; _arcc478b1
+    -&gt; ssn:observedProperty -&gt; http://www.semsorgrid4env.eu/ontologies/CoastalDefences.owl#TideHeight
+    -&gt; ssn:observationResult -&gt; _:arcc478b2
+    -&gt; ssn:observedBy -&gt; id-semsorgrid:sensors/cco/portsmouth
+    -&gt; DUL:directlyFollows -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#083300
+    -&gt; DUL:isMemberOf -&gt; id-semsorgrid:observations/cco/TideHeight/20110101
+    -&gt; DUL:directlyPrecedes -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#085300
+    &lt;- is DUL:hasMember of &lt;- id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101
+    &lt;- is DUL:directlyPrecedes of &lt;- id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#083300
+    &lt;- is DUL:directlyFollows of &lt;- id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#085300
+</code></pre>
+
+<p style="font-weight: bold; background-color: yellow;">More of the same lies.</p>
+
+<p>The bnodes (blank nodes -- non-literal nodes not identified by URIs) are also 
+shown and their IDs can be traced to see which properties are available on each 
+node.</p>
+
+<p>To collect all tide height observations we query the graph for all nodes of type 
+<code>ssn:Observation</code> and skip over those whose <code>ssn:observedProperty</code> property is 
+not that which we are looking for (just in case we have other observation types 
+in our graph).</p>
+
+<p>Each observation corresponds to a particular time interval so we need to collect 
+the time (in this example we'll associate the end of the time interval -- 
+<code>time:hasEnd</code> -- with the reading) as well as the wave height observation 
+itself. The code snippet below also skips any observations whose 
+<code>ssn:observationResultTime</code> property doesn't point to a node of type 
+<code>time:Interval</code>, but it would be trivial to also parse nodes of different time 
+classes.</p>
+
+<p>Finally in this snippet the array of observations is sorted by time.</p>
+
+<p>Again, to see how the traversal is built up it's easiest to inspect the graph 
+visually.</p>
+
+<pre><code>$tideobservations = array();
+foreach ($graph-&gt;allOfType("ssn:Observation") as $observationNode) {
+    if ($observationNode-&gt;get("ssn:observedProperty") != "http://www.semsorgrid4env.eu/ontologies/CoastalDefences.owl#TideHeight")
+        continue;
+    $timeNode = $observationNode-&gt;get("ssn:observationResultTime");
+    if (!$timeNode-&gt;isType("time:Interval"))
+        continue;
+    $tideobservations[] = array(strtotime($timeNode-&gt;get("time:hasEnd")),
+        floatVal((string) $observationNode-&gt;get("ssn:observationResult")-&gt;get("ssn:hasResult")));
+}
+usort($tideobservations, "sortreadings");
+</code></pre>
+
+<p>Where <code>sortreadings</code> is a user-defined sorting function (see PHP's documentation 
+for <code>usort</code>) -- in this case something very simple like the following, since it 
+need only compare the first element of each input:</p>
+
+<pre><code>function sortreadings($a, $b) { return $a[0] - $b[0]; }
+</code></pre>
+
+<p>The wave height data is then collected by loading the corresponding readings 
+into the graph with</p>
+
+<pre><code>$graph-&gt;load("id-semsorgrid:observations/cco/portsmouth/Hs/latest");
+</code></pre>
+
+<p style="font-weight: bold; background-color: yellow;">Another lie.</p>
+
+<p>and using code very similar to the above, this time comparing the 
+<code>ssn:observedProperty</code> of the <code>ssn:Observation</code> nodes with the concept of wave 
+height rather than tide height.</p>
+
+<h2>Getting predicted tide height data from the BBC</h2>
+
+<p>In an ideal world the BBC weather data would be available as RDF (or the data 
+we're looking for available as RDF elsewhere) but sadly at present it is not. 
+However, it's fairly easy to scrape the next week's worth of tide height data 
+for a particular location by using some of the Ajax calls the BBC weather 
+website uses and then parsing the results. For the purposes of this mashup a 
+short (~50 lines) PHP script was written to do just this and output timestamps 
+and predicted tide heights. It's outside the scope of this tutorial to show how 
+this script was written.</p>
+
+<p>However, we pull this data into our mashup script and parse it into a similar 
+structure as we have for the other readings.</p>
+
+<h2>Visualizing the data</h2>
+
+<p>The arrays of data resulting from the code above can be used to produce a chart 
+of the observed and predicted tide and wave heights, with markers showing the 
+current time and the various threshold levels for the flood gates. Explaining 
+the snippet below is out of the scope of this document, but it uses the Flot 
+library to produce a graph. This snippet starts outside of a <code>&lt;?php</code> tag.</p>
+
+<pre><code>&lt;div id="tideheight" style="width: 760px; height:300px; margin: 0 auto;"&gt;&lt;/div&gt;
+&lt;div id="tideheight_legend"&gt;&lt;/div&gt;
+&lt;script type="text/javascript"&gt;
+    $(function() {
+        &lt;?php
+        function timestamptomilliseconds($readings) {
+            $a = array();
+            foreach ($readings as $reading)
+                $a[] = array($reading[0] * 1000, $reading[1]);
+            return $a;
+        }
+        echo "var tide_observed = " . json_encode(timestamptomilliseconds($tideobservations)) . ";";
+        echo "var wave_observed = " . json_encode(timestamptomilliseconds($waveobservations)) . ";";
+        echo "var tide_predicted = " . json_encode(timestamptomilliseconds($predicted)) . ";";
+        ?&gt;
+        $.plot($("#tideheight"), [
+            { data: tide_observed, stack: true, label: "Observed tide height" },
+            { data: wave_observed, stack: true, label: "Observed wave height plus observed tide height" },
+            { data: tide_predicted, label: "Predicted tide height", data: tide_predicted, }
+        ], {
+            xaxis: { mode: "time" },
+            grid: {
+                markings: [ { color: "#060", lineWidth: 1, xaxis: { from: &lt;?php echo time() * 1000; ?&gt;, to: &lt;?php echo time() * 1000; ?&gt; } } ],
+                backgroundColor: "#fff"
+            },
+            legend: { show: true, position: "ne", container: $("#tideheight_legend"), noColumns: 3 }
+        });
+    });
+&lt;/script&gt;
+</code></pre>
+
+<p>We can also easily show maps of the gate positions using something like the 
+Google Static Maps API, such as the following call which assumes we have an 
+array <code>$gates</code> of associative arrays with the keys <code>lat</code> and <code>lon</code>:</p>
+
+<pre><code>&lt;?php
+$markers = array();
+foreach ($gates as $gate)
+    $markers[] = "markers=$gate[lat],$gate[lon]";
+?&gt;
+&lt;img src="http://maps.google.com/maps/api/staticmap?size=550x300&amp;amp;maptype=roadmap&amp;amp;&lt;?php echo implode("&amp;amp;", $markers); ?&gt;&amp;amp;sensor=false"&gt;
+</code></pre>
+
+<h2>Fetching related data from other data sources</h2>
+
+<p>We can get some information on nearby amenities which should be notified should 
+flooding become likely by using a service such as <a href="http://linkedgeodata.org/">Linked 
+Geodata</a>.</p>
+
+<p>For instance, to get police stations, schools and hospitals within half a 
+kilometre of a particular gate, the Linked Geodata Sparql endpoint is queried as 
+follows.</p>
+
+<pre><code>$store = ARC2::getRemoteStore(array("remote_store_endpoint" =&gt; "http://linkedgeodata.org/sparql/"));
+$rows = $store-&gt;query("
+    PREFIX lgdo: &lt;http://linkedgeodata.org/ontology/&gt;
+    PREFIX geo: &lt;http://www.w3.org/2003/01/geo/wgs84_pos#&gt;
+    PREFIX rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt;
+    SELECT * WHERE {
+        { ?place a lgdo:Police . }
+        UNION { ?place a lgdo:School . }
+        UNION { ?place a lgdo:Hospital . }
+        ?place
+            a ?type ;
+            geo:geometry ?placegeo ;
+            rdfs:label ?placename .
+        FILTER(&lt;bif:st_intersects&gt; (?placegeo, &lt;bif:st_point&gt; ($gate["lon"], $gate["lat"]), 5)) .
+    }
+", "rows");
+</code></pre>
+
+<p>The returned results include the coordinates of each matching amenity 
+(<code>placegeo</code>), from which the distance to the gate can be calculated.</p>
+
+<h2>Finished mashup</h2>
+
+<p>The finished mashup, once styled, looks something like the screenshot shown.</p>
+
+<p><img src="screenshot.png" alt="Finished mashup screenshot" /></p>

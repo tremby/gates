@@ -1,0 +1,5 @@
+For the Semsorgrid project, IAM, University of Southampton
+
+arc2 and Graphite.php are symlinks to the arc2 library and Graphite (http://graphite.ecs.soton.ac.uk/)
+flot is a symlink to the flot library (http://code.google.com/p/flot/)
+images is a symlink to the images directory of the boscombe mashup
