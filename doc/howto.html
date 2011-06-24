@@ -114,7 +114,7 @@ foreach ($graph-&gt;allOfType("ssn:Observation") as $observationNode) {
     if (!$timeNode-&gt;isType("time:Interval"))
         continue;
     $tideobservations[] = array(strtotime($timeNode-&gt;get("time:hasEnd")),
-        floatVal((string) $observationNode-&gt;get("ssn:observationResult")-&gt;get("ssn:hasResult")));
+		floatVal((string) $observationNode-&gt;get("ssn:observationResult")-&gt;get("ssn:hasValue")-&gt;get("ssne:hasQuantityValue")));
 }
 usort($tideobservations, "sortreadings");
 </code></pre>

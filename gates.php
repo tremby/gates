@@ -33,6 +33,7 @@ $ns = array(
 	"skos" => "http://www.w3.org/2004/02/skos/core#",
 	"dbpedia-owl" => "http://dbpedia.org/ontology/",
 	"ssn" => "http://purl.oclc.org/NET/ssnx/ssn#",
+	"ssne" => "http://www.semsorgrid4env.eu/ontologies/SsnExtension.owl#",
 	"DUL" => "http://www.loa-cnr.it/ontologies/DUL.owl#",
 	"time" => "http://www.w3.org/2006/time#",
 	"sw" => "http://sweet.jpl.nasa.gov/2.1/sweetAll.owl#",
@@ -64,7 +65,7 @@ foreach ($graph->allOfType("ssn:Observation") as $observationNode) {
 	if (!$timeNode->isType("time:Interval"))
 		continue;
 	$tideobservations[] = array(strtotime($timeNode->get("time:hasEnd")),
-		floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasResult")));
+		floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasValue")->get("ssne:hasQuantityValue")));
 }
 
 // sort in ascending date order
@@ -95,7 +96,7 @@ foreach ($graph->allOfType("ssn:Observation") as $observationNode) {
 	if (!$timeNode->isType("time:Interval"))
 		continue;
 	$waveobservations[] = array(strtotime($timeNode->get("time:hasEnd")),
-		floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasResult")));
+		floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasValue")->get("ssne:hasQuantityValue")));
 }
 
 // sort in ascending date order
