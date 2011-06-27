@@ -120,7 +120,7 @@ visually.
 		if (!$timeNode->isType("time:Interval"))
 			continue;
 		$tideobservations[] = array(strtotime($timeNode->get("time:hasEnd")),
-			floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasResult")));
+			floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasValue")->get("ssne:hasQuantityValue")));
 	}
 	usort($tideobservations, "sortreadings");
 
