@@ -64,7 +64,7 @@ foreach ($graph->allOfType("ssn:Observation") as $observationNode) {
 	$timeNode = $observationNode->get("ssn:observationResultTime");
 	if (!$timeNode->isType("time:Interval"))
 		continue;
-	$tideobservations[] = array(strtotime($timeNode->get("time:hasEnd")),
+	$tideobservations[] = array(strtotime($timeNode->get("time:hasBeginning")),
 		floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasValue")->get("ssne:hasQuantityValue")));
 }
 
@@ -95,7 +95,7 @@ foreach ($graph->allOfType("ssn:Observation") as $observationNode) {
 	$timeNode = $observationNode->get("ssn:observationResultTime");
 	if (!$timeNode->isType("time:Interval"))
 		continue;
-	$waveobservations[] = array(strtotime($timeNode->get("time:hasEnd")),
+	$waveobservations[] = array(strtotime($timeNode->get("time:hasBeginning")),
 		floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasValue")->get("ssne:hasQuantityValue")));
 }
 

@@ -27,6 +27,7 @@ require_once "Graphite.php";
 $graph = new Graphite();
 $graph-&gt;ns("id-semsorgrid", "http://id.semsorgrid.ecs.soton.ac.uk/");
 $graph-&gt;ns("ssn", "http://purl.oclc.org/NET/ssnx/ssn#");
+$graph-&gt;ns("ssne", "http://www.semsorgrid4env.eu/ontologies/SsnExtension.owl#");
 $graph-&gt;ns("DUL", "http://www.loa-cnr.it/ontologies/DUL.owl#");
 $graph-&gt;ns("time", "http://www.w3.org/2006/time#");
 </code></pre>
@@ -62,7 +63,7 @@ what is available, the same can be achieved by using a dedicated RDF browser.</p
 <p>The beginning of the output is something like the following:</p>
 
 <pre><code>id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101
-    -&gt; rdf:type -&gt; DUL:Collection
+    -&gt; rdf:type -&gt; ssne:ObservationCollection
     -&gt; DUL:hasMember -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#084300,
     -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#134300,
     -&gt; id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#192301
@@ -94,8 +95,8 @@ not that which we are looking for (just in case we have other observation types
 in our graph).</p>
 
 <p>Each observation corresponds to a particular time interval so we need to collect 
-the time (in this example we'll associate the end of the time interval -- 
-<code>time:hasEnd</code> -- with the reading) as well as the wave height observation 
+the time (in this example we'll associate the beginning of the time interval -- 
+<code>time:hasBeginning</code> -- with the reading) as well as the wave height observation 
 itself. The code snippet below also skips any observations whose 
 <code>ssn:observationResultTime</code> property doesn't point to a node of type 
 <code>time:Interval</code>, but it would be trivial to also parse nodes of different time 
@@ -113,7 +114,7 @@ foreach ($graph-&gt;allOfType("ssn:Observation") as $observationNode) {
     $timeNode = $observationNode-&gt;get("ssn:observationResultTime");
     if (!$timeNode-&gt;isType("time:Interval"))
         continue;
-    $tideobservations[] = array(strtotime($timeNode-&gt;get("time:hasEnd")),
+    $tideobservations[] = array(strtotime($timeNode-&gt;get("time:hasBeginning")),
         floatVal((string) $observationNode-&gt;get("ssn:observationResult")-&gt;get("ssn:hasValue")-&gt;get("ssne:hasQuantityValue")));
 }
 usort($tideobservations, "sortreadings");

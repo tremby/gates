@@ -24,10 +24,10 @@ Another useful tool is an RDF browser such as the [Q&D RDF Browser][qdbrowser].
 [php]: http://php.net/
 [arc2]: http://arc.semsol.org/
 [graphite]: http://graphite.ecs.soton.ac.uk/
-[gsmapi]: http://code.google.com/apis/maps/documentation/staticmaps/
-[qdbrowser]: http://graphite.ecs.soton.ac.uk/browser/
 [flot]: http://code.google.com/p/flot/
 [jquery]: http://jquery.com/
+[gsmapi]: http://code.google.com/apis/maps/documentation/staticmaps/
+[qdbrowser]: http://graphite.ecs.soton.ac.uk/browser/
 
 First we load in the Arc2 and Graphite libraries and set up Graphite with a list 
 of namespaces for coding simplicity.
@@ -37,6 +37,7 @@ of namespaces for coding simplicity.
 	$graph = new Graphite();
 	$graph->ns("id-semsorgrid", "http://id.semsorgrid.ecs.soton.ac.uk/");
 	$graph->ns("ssn", "http://purl.oclc.org/NET/ssnx/ssn#");
+	$graph->ns("ssne", "http://www.semsorgrid4env.eu/ontologies/SsnExtension.owl#");
 	$graph->ns("DUL", "http://www.loa-cnr.it/ontologies/DUL.owl#");
 	$graph->ns("time", "http://www.w3.org/2006/time#");
 
@@ -69,7 +70,7 @@ what is available, the same can be achieved by using a dedicated RDF browser.
 The beginning of the output is something like the following:
 
 	id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101
-		-> rdf:type -> DUL:Collection
+		-> rdf:type -> ssne:ObservationCollection
 		-> DUL:hasMember -> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#084300,
 		-> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#134300,
 		-> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#192301
@@ -100,8 +101,8 @@ not that which we are looking for (just in case we have other observation types
 in our graph).
 
 Each observation corresponds to a particular time interval so we need to collect 
-the time (in this example we'll associate the end of the time interval -- 
-`time:hasEnd` -- with the reading) as well as the wave height observation 
+the time (in this example we'll associate the beginning of the time interval -- 
+`time:hasBeginning` -- with the reading) as well as the wave height observation 
 itself. The code snippet below also skips any observations whose 
 `ssn:observationResultTime` property doesn't point to a node of type 
 `time:Interval`, but it would be trivial to also parse nodes of different time 
@@ -119,7 +120,7 @@ visually.
 		$timeNode = $observationNode->get("ssn:observationResultTime");
 		if (!$timeNode->isType("time:Interval"))
 			continue;
-		$tideobservations[] = array(strtotime($timeNode->get("time:hasEnd")),
+		$tideobservations[] = array(strtotime($timeNode->get("time:hasBeginning")),
 			floatVal((string) $observationNode->get("ssn:observationResult")->get("ssn:hasValue")->get("ssne:hasQuantityValue")));
 	}
 	usort($tideobservations, "sortreadings");
