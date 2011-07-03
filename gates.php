@@ -42,7 +42,6 @@ $ns = array(
 
 // load tide sensor linked data
 $tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/lymington_tide/TideHeight/latest";
-$tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/lymington_tide/TideHeight/20110101"; //TODO: delete this line
 
 $graph = new Graphite($ns);
 $graph->cacheDir("/tmp/mashupcache/graphite");
