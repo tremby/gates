@@ -44,9 +44,8 @@ $ns = array(
 $tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/lymington_tide/TideHeight/latest";
 $tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/lymington_tide/TideHeight/20110101"; //TODO: delete this line
 
-$graph = new Graphite();
-foreach ($ns as $short => $long)
-	$graph->ns($short, $long);
+$graph = new Graphite($ns);
+$graph->cacheDir("/tmp/mashupcache/graphite");
 $triples = $graph->load($tideobservationsURI);
 if ($triples < 1)
 	die("failed to load any triples from '$tideobservationsURI'");
@@ -665,7 +664,7 @@ function prefix($n = null) {
 // type is passed straight through to Arc
 // if no PREFIX lines are found in the query all known prefixes are prepended
 function sparqlquery($endpoint, $query, $type = "rows", $maxage = 86400/*1 day*/) {
-	$cachedir = "cache/" . md5($endpoint);
+	$cachedir = "/tmp/mashupcache/sparql" . md5($endpoint);
 
 	if (!is_dir($cachedir))
 		mkdir($cachedir) or die("couldn't make cache directory");
