@@ -9,7 +9,7 @@ define("ENDPOINT_LINKEDGEODATA", "http://linkedgeodata.org/sparql/");
 
 // include the ARC2 libraries
 require_once "arc2/ARC2.php";
-require_once "Graphite.php";
+require_once "Graphite/graphite/Graphite.php";
 
 $ns = array(
 	"geonames" => "http://www.geonames.org/ontology#",
