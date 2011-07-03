@@ -71,7 +71,6 @@ usort($tideobservations, "sortreadings");
 
 // load wave height sensor linked data
 $waveobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/haylingisland/Hs/latest";
-$waveobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/haylingisland/Hs/20110101"; //TODO: delete this line
 
 $graph = new Graphite();
 foreach ($ns as $short => $long)
