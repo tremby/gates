@@ -41,8 +41,8 @@ $ns = array(
 );
 
 // load tide sensor linked data
-$tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/arunplatform_tide/TideHeight/latest";
-$tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/arunplatform_tide/TideHeight/20110101"; //TODO: delete this line
+$tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/lymington_tide/TideHeight/latest";
+$tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/lymington_tide/TideHeight/20110101"; //TODO: delete this line
 
 $graph = new Graphite();
 foreach ($ns as $short => $long)
@@ -103,15 +103,15 @@ foreach ($graph->allOfType("ssn:Observation") as $observationNode) {
 usort($waveobservations, "sortreadings");
 
 // current time
-$now = strtotime("2011-01-01 23:57"); //TODO: replace this with current time
+$now = strtotime("2011-02-15 11:45"); //TODO: replace this with current time
 
 // get predicted tide height
 $predicted = array();
 $offset = null;//TODO: remove!
-foreach (file("http://sponvoid.ecs.soton.ac.uk/tide/") as $line) {
+foreach (file("http://apps.semsorgrid.ecs.soton.ac.uk/tide/") as $line) {
 	list($time, $height) = explode("\t", $line);
 	if (is_null($offset))
-		$offset = $time - strtotime("2011-01-01");//TODO: remove!
+		$offset = $time - strtotime("2011-02-15");//TODO: remove!
 	$predicted[] = array(($time - $offset), trim($height));//TODO: remove offset!
 }
 
@@ -151,13 +151,13 @@ $gates = array(
 		"name" => "High Street",
 		"lat" => 50.7908,
 		"lon" => -1.1026,
-		"threshold" => 3.8,
+		"threshold" => 2.7,
 	),
 	array(
 		"name" => "Queen Street",
 		"lat" => 50.7997,
 		"lon" => -1.1046,
-		"threshold" => 4.0,
+		"threshold" => 3.2,
 	),
 	array(
 		"name" => "Circular Road",
