@@ -662,7 +662,7 @@ function prefix($n = null) {
 // type is passed straight through to Arc
 // if no PREFIX lines are found in the query all known prefixes are prepended
 function sparqlquery($endpoint, $query, $type = "rows", $maxage = 86400/*1 day*/) {
-	$cachedir = "/tmp/mashupcache/sparql" . md5($endpoint);
+	$cachedir = "/tmp/mashupcache/sparql/" . md5($endpoint);
 
 	if (!is_dir($cachedir))
 		mkdir($cachedir) or die("couldn't make cache directory");
