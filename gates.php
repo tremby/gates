@@ -44,7 +44,10 @@ $ns = array(
 $tideobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/lymington_tide/TideHeight/latest";
 
 $graph = new Graphite($ns);
-$graph->cacheDir("/tmp/mashupcache/graphite");
+$graphitecache = "/tmp/mashupcache/graphite";
+if (!is_dir($graphitecache))
+	mkdir($graphitecache, 0777, true);
+$graph->cacheDir($graphitecache);
 $triples = $graph->load($tideobservationsURI);
 if ($triples < 1)
 	die("failed to load any triples from '$tideobservationsURI'");
@@ -665,7 +668,7 @@ function sparqlquery($endpoint, $query, $type = "rows", $maxage = 86400/*1 day*/
 	$cachedir = "/tmp/mashupcache/sparql/" . md5($endpoint);
 
 	if (!is_dir($cachedir))
-		mkdir($cachedir) or die("couldn't make cache directory");
+		mkdir($cachedir, 0777, true) or die("couldn't make cache directory");
 
 	if (strpos($query, "PREFIX") === false)
 		$query = prefix() . $query;
