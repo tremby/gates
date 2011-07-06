@@ -1,4 +1,4 @@
-Coding a mashup: Portsmouth flood gate status
+Coding a mashup: flood gate status
 =============================================
 
 As an example of using the HLAPI this section describes how a "flood gate 
@@ -29,71 +29,62 @@ Another useful tool is an RDF browser such as the [Q&D RDF Browser][qdbrowser].
 [gsmapi]: http://code.google.com/apis/maps/documentation/staticmaps/
 [qdbrowser]: http://graphite.ecs.soton.ac.uk/browser/
 
-First we load in the Arc2 and Graphite libraries and set up Graphite with a list 
-of namespaces for coding simplicity.
+Setting up the graph
+--------------------
 
+First we define some namespaces, load in the Arc2 and Graphite libraries and set 
+up a new Graphite graph and tell it to use our namespaces.
+
+	$ns = array(
+		"id-semsorgrid" => "http://id.semsorgrid.ecs.soton.ac.uk/",
+		"ssn" => "http://purl.oclc.org/NET/ssnx/ssn#",
+		"ssne" => "http://www.semsorgrid4env.eu/ontologies/SsnExtension.owl#",
+		"DUL" => "http://www.loa-cnr.it/ontologies/DUL.owl#",
+		"time" => "http://www.w3.org/2006/time#",
+		// ...more namespaces
+	);
 	require_once "arc/ARC2.php";
-	require_once "Graphite.php";
-	$graph = new Graphite();
-	$graph->ns("id-semsorgrid", "http://id.semsorgrid.ecs.soton.ac.uk/");
-	$graph->ns("ssn", "http://purl.oclc.org/NET/ssnx/ssn#");
-	$graph->ns("ssne", "http://www.semsorgrid4env.eu/ontologies/SsnExtension.owl#");
-	$graph->ns("DUL", "http://www.loa-cnr.it/ontologies/DUL.owl#");
-	$graph->ns("time", "http://www.w3.org/2006/time#");
+	require_once "Graphite/graphite/Graphite.php";
+	$graph = new Graphite($ns);
 
-This continues for other useful namespace prefixes. The `id-semsorgrid` prefix 
-is added for further code brevity.
+It's also useful to tell Graphite to cache the RDF files it downloads:
 
-Getting the day's tide and wave height readings
+	$cachedir = "/tmp/mashupcache/graphite";
+	if (!is_dir($cachedir))
+		mkdir($cachedir, 0777, true)
+	$graph->cacheDir($cachedir);
+
+Getting the latest tide and wave height readings
 -----------------------------------------------
 
-In the case of the CCO deployment, the current day's tide height readings for 
-the Portsmouth sensor are identified by
+Since we know how our HLAPI is configured, we know the REST service URI for the 
+latest tide height data from our sensor `lymington_tide` and so can load the 
+data into our graph directly.
 
-	http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/portsmouth/TideHeight/latest
+	$tideobservationsURI = "id-semsorgrid:observations/cco/lymington_tide/TideHeight/latest";
+	if ($graph->load($tideobservationsURI) == 0)
+		die("failed to load any triples from '$tideobservationsURI'");
 
-<p style="font-weight: bold; background-color: yellow;">This is a lie -- that sensor doesn't exist. In the demo I'm using `arunplatform_tide`, not `portsmouth`.</p>
-
-We can direct Graphite to load the resources into a graph -- Graphite and the 
+This directs Graphite to load the resources into a graph -- Graphite and the 
 HLAPI will automatically negotiate a content type which can be used. We're using 
 the namespace we defined above for brevity.
-
-	$graph->load("id-semsorgrid:observations/cco/portsmouth/TideHeight/latest");
-
-<p style="font-weight: bold; background-color: yellow;">The same lie again.</p>
 
 Graphite allows the graph to be rendered directly as HTML to quickly visualize 
 what is available, the same can be achieved by using a dedicated RDF browser.
 
 	echo $graph->dump();
 
-The beginning of the output is something like the following:
+From inspection of the result the links to use to get from one URI to another 
+can be found. To load the sensor's document into the graph (and so get 
+information about the sensor) we find any `ssn:Observation` resource's 
+`ssn:observedBy` property -- that's the sensor -- and load it.
 
-	id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101
-		-> rdf:type -> ssne:ObservationCollection
-		-> DUL:hasMember -> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#084300,
-		-> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#134300,
-		-> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#192301
-
-	id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#084300
-		-> rdf:type -> ssn:Observation
-		-> ssn:featureOfInterest -> http://www.eionet.europa.eu/gemet/concept?cp=7495
-		-> ssn:observationResultTime -> _arcc478b1
-		-> ssn:observedProperty -> http://www.semsorgrid4env.eu/ontologies/CoastalDefences.owl#TideHeight
-		-> ssn:observationResult -> _:arcc478b2
-		-> ssn:observedBy -> id-semsorgrid:sensors/cco/portsmouth
-		-> DUL:directlyFollows -> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#083300
-		-> DUL:isMemberOf -> id-semsorgrid:observations/cco/TideHeight/20110101
-		-> DUL:directlyPrecedes -> id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#085300
-		<- is DUL:hasMember of <- id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101
-		<- is DUL:directlyPrecedes of <- id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#083300
-		<- is DUL:directlyFollows of <- id-semsorgrid:observations/cco/portsmouth/TideHeight/20110101#085300
-
-<p style="font-weight: bold; background-color: yellow;">More of the same lies.</p>
-
-The bnodes (blank nodes -- non-literal nodes not identified by URIs) are also 
-shown and their IDs can be traced to see which properties are available on each 
-node.
+	// get sensor
+	$sensor = $graph->allOfType("ssn:Observation")->get("ssn:observedBy")->current();
+	if ($sensor->isNull())
+		die("no observations");
+	if ($sensor->load() == 0)
+		die("couldn't load sensor RDF");
 
 To collect all tide height observations we query the graph for all nodes of type 
 `ssn:Observation` and skip over those whose `ssn:observedProperty` property is 
@@ -109,9 +100,6 @@ itself. The code snippet below also skips any observations whose
 classes.
 
 Finally in this snippet the array of observations is sorted by time.
-
-Again, to see how the traversal is built up it's easiest to inspect the graph 
-visually.
 
 	$tideobservations = array();
 	foreach ($graph->allOfType("ssn:Observation") as $observationNode) {
@@ -135,8 +123,6 @@ The wave height data is then collected by loading the corresponding readings
 into the graph with
 
 	$graph->load("id-semsorgrid:observations/cco/portsmouth/Hs/latest");
-
-<p style="font-weight: bold; background-color: yellow;">Another lie.</p>
 
 and using code very similar to the above, this time comparing the 
 `ssn:observedProperty` of the `ssn:Observation` nodes with the concept of wave 

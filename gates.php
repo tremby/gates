@@ -52,10 +52,12 @@ $triples = $graph->load($tideobservationsURI);
 if ($triples < 1)
 	die("failed to load any triples from '$tideobservationsURI'");
 
-// get tide sensor URI
-$sensor = $graph->allOfType("ssn:Observation")->get("ssn:observedBy")->distinct()->current();
+// get sensor
+$sensor = $graph->allOfType("ssn:Observation")->get("ssn:observedBy")->current();
 if ($sensor->isNull())
-	die("no results yet today");
+	die("no observations");
+if ($sensor->load() == 0)
+	die("couldn't load sensor RDF");
 
 // collect times and heights
 $tideobservations = array();
@@ -73,19 +75,9 @@ foreach ($graph->allOfType("ssn:Observation") as $observationNode) {
 usort($tideobservations, "sortreadings");
 
 // load wave height sensor linked data
-$waveobservationsURI = "http://id.semsorgrid.ecs.soton.ac.uk/observations/cco/haylingisland/Hs/latest";
-
-$graph = new Graphite();
-foreach ($ns as $short => $long)
-	$graph->ns($short, $long);
-$triples = $graph->load($waveobservationsURI);
-if ($triples < 1)
+$waveobservationsURI = "id-semsorgrid:observations/cco/lymington_tide/Hs/latest";
+if ($graph->load($waveobservationsURI) == 0)
 	die("failed to load any triples from '$waveobservationsURI'");
-
-// get tide sensor URI
-$sensor = $graph->allOfType("ssn:Observation")->get("ssn:observedBy")->distinct()->current();
-if ($sensor->isNull())
-	die("no results yet today");
 
 // collect times and heights
 $waveobservations = array();
